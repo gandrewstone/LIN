@@ -1,0 +1,24 @@
+This is a LIN (http://en.wikipedia.org/wiki/Local_Interconnect_Network) protocol
+master implementation that supports LIN 1.X or LIN 2.X frame types.  
+
+It is built on top of the "Arduino" Serial and digital IO APIs.  These 
+"underface" APIs form a useful abstraction layer for any chip.  So its better to
+implement them for your new microcontroller and then get LIN for free using this
+library than to implement LIN over a raw register set.
+
+The library supports injection of immediate LIN frames, or a "skew heap" based
+schedule table.  The skew heap schedule table differs from what is suggested
+by the LIN specification (which defines a linked list of LIN frames and time
+intervals between them).  This implementation provides a similar "pile" of 
+LIN frames, but instead of being a static list, the skew heap essentially 
+dynamically sorts the frames to find the next scheduled frame.  This allows
+frames to be easily inserted and removed from the schedule, and frame interval 
+periods (the time between 2 issues of the same frame) to be changed
+dynamically.  It also means that the frame interval period does not depend on
+the total length of the schedule table (as it does for the specced linked list
+implementation) which eliminates an unnecessary interaction between otherwise
+independent LIN devices.
+
+The library was tested on a Lightuino 5 (Arduino Duemilanove/Uno compatible 
+board) using a LIN slave LED of unknown provenance.  So you will have to change
+the test code to generate frames for whatever LIN device you have on hand.
