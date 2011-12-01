@@ -22,6 +22,12 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/* This example code uses 2 different LIN LEDs of unknown type (acquired as 
+   samples).  You will have to modify this code to work with whatever LIN
+   devices you have.
+
+   TODO: make a Arduino LIN slave so the code works without modification.
+ */
 
 #include "lightuino5.h"
 #include "WProgram.h"
@@ -30,12 +36,25 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Lin lin;
 
 #ifndef SIM
-#define simprt
+#define simprt p
 #define assert
 #else
 #define simprt printf
+#include <stdarg.h>
 #include <assert.h>
 #endif
+
+// Printf-style to the USB
+void p(char *fmt, ... )
+{
+        char tmp[128]; // resulting string limited to 128 chars
+        va_list args;
+        va_start (args, fmt );
+        vsnprintf(tmp, 128, fmt, args);
+        va_end (args);
+        Usb.print(tmp);
+}
+
 
 void setAllFadeTime(uint8_t fadeTime)
 {
@@ -52,6 +71,21 @@ void setAllToColor(uint8_t red, uint8_t grn, uint8_t blu)
   lin.send(0x2e, linCmd2,2,1);
 }
 
+void setColor2(uint32_t addr, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness,uint8_t whtLed=0)
+{
+  uint8_t linCmd[] = { (uint8_t)(addr),(uint8_t)(addr>>8),(uint8_t)(addr>>16),0b00000000 | ((addr>>24)&3),((brightness<<1) | (whtLed&1)),red ,green , blue };
+  lin.send(0x01,linCmd,8);
+}
+
+void setAllToColor2(uint8_t red, uint8_t blue, uint8_t green, uint8_t brightness)
+{
+  //unsigned char linCmd[] = { 0xFF,0xFF,0xFF,0b00100111,((brightness<<1) | 0x00),red ,green , blue };
+  //lin.send(0x01,linCmd,8);
+  for (int i=0;i<10;i++)
+    setColor2(0x0fffffff, red,blue,green,brightness);
+}
+
+
 void setup(void)
 {
   lin.begin(19200);
@@ -61,10 +95,10 @@ void setup(void)
 
 void SimpleFrameInjection()
 { 
-  if (0)
+  if (1)
     {
       uint8_t buf[8];
-      uint8_t recvOk = lin.recv(0x0,buf,8,1);  // Should fail since nobody is at 0
+      uint8_t recvOk = lin.recv(32,buf,8,1);  // Should fail since nobody is at 0
       if (recvOk==0) simprt("receive timeout succeeded. ret = %d\n",recvOk);
       else simprt("receive timeout test failed. ret = %d\n",recvOk);
     }
@@ -114,6 +148,75 @@ LedFrame::LedFrame(uint16_t rp,uint8_t red, uint8_t grn, uint8_t blu)
   }
 
 
+void led2Test(int addr, int delayAmt)
+{
+  //Usb.print("Test red\n");
+  //setAllToColor2(100,1,1,100);
+  setColor2(addr,100,0,0,100);
+  delay(delayAmt);
+  //Usb.print("Test green\n");
+  setColor2(addr,0,100,0,100);
+  delay(delayAmt);
+  //Usb.print("Test blue\n");
+  setAllToColor2(0,0,100,100);
+  delay(delayAmt);
+
+#if 0    
+  Usb.print("Fading\n");
+
+  for (int i=10;i<=100;i+=10)
+    {
+      delay(50);
+      setAllToColor2(100,100,100,i);
+    }
+
+
+  for (int i=10;i<=100;i+=10)
+    {
+      delay(50);
+      setAllToColor2(100-i,100,100,100);
+    }
+    
+  for (int i=10;i<100;i+=10)
+    {
+      delay(50);
+      setAllToColor2(1,100-i,100,100);
+    }
+    
+  for (int i=10;i<100;i+=10)
+    {
+      delay(50);
+      setAllToColor2(1,1,100-i,100);
+    }
+#endif
+}
+
+void led2RecvTest(uint8_t addr)
+{
+
+  uint8_t buf[8];
+  setColor2((1<<(addr-1)),100,0,0,0x60);
+  for (int i=0;i<8;i++) buf[i] = 0;
+  delay(400);
+  uint8_t recvOk = lin.recv(0x20 + addr-1,buf,6,1);  // The data is correct but the checksum byte is 0xFF -- may be a bug in the device
+  p("received %d bytes. %2x %2x %2x %2x %2x %2x %2x %2x\n",recvOk, buf[0],buf[1],buf[2],buf[3], buf[4],buf[5],buf[6],buf[7]);
+  setColor2((1<<(addr-1)),0,0x40,0,100);
+  for (int i=0;i<8;i++) buf[i] = 0;
+  delay(300);
+  recvOk = lin.recv(0x20 + addr-1,buf,6,1);
+  p("received %d bytes. %2x %2x %2x %2x %2x %2x %2x %2x\n",recvOk, buf[0],buf[1],buf[2],buf[3], buf[4],buf[5],buf[6],buf[7]);
+
+  delay(100);
+  //setColor2((1<<(addr-1)),00,100,0,100);
+  for (int i=0;i<8;i++) buf[i] = 0;
+  delay(200);
+  recvOk = lin.recv(0x21 + addr-1,buf,6,1);  // Should fail
+  p("received %d bytes. %2x %2x %2x %2x %2x %2x %2x %2x\n",recvOk, buf[0],buf[1],buf[2],buf[3], buf[4],buf[5],buf[6],buf[7]);
+
+  //if (recvOk==0) simprt("receive timeout. ret = %d\n",recvOk);
+  //else simprt("receive ok. ret = %d\n",recvOk);
+}
+
 void SchedulerTest(void)
 {
   unsigned long int start = millis();
@@ -134,7 +237,10 @@ void SchedulerTest(void)
 
  void loop(void)
 {
-  //delay(1000); // Don't think the LIN chip is ready right away
+  uint8_t addr = 5;
+  for (int delayAmt = 301; delayAmt>0;delayAmt-=100)
+    led2Test((1<<(addr-1)),delayAmt);
+  led2RecvTest(addr);
 
   setAllFadeTime(0xe0);
   setAllToColor(255,0,0);

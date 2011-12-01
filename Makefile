@@ -1,8 +1,10 @@
 VERSION = 0.1
 
 # CUSTOMIZATION
-ArduinoSimDir     :=   # Arduino APIs compilable under Linux       
-ArduinoUserLibDir :=   # Your sketchbook folder
+ # Arduino APIs compilable under Linux     
+ArduinoSimDir     :=   
+ # Your sketchbook folder + /libraries
+ArduinoUserLibDir :=   
 
 
 Hfiles := $(wildcard *.h) $(wildcard $(ArduinoSimDir)/avr/*.h) $(wildcard $(ArduinoSimDir)/*.h) $(wildcard $(ArduinoSimDir)/*/*.h)

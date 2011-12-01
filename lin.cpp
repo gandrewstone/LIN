@@ -24,6 +24,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "WProgram.h"
 #include "lin.h"
+#include <util/delay.h>
+
+ //void p(char *fmt, ... );
 
 LinScheduleEntry::LinScheduleEntry()
 {
@@ -69,7 +72,7 @@ void Lin::begin(int speed)
 
   unsigned long int Tbit = 100000/serialSpd;  // Not quite in uSec, I'm saving an extra 10 to change a 1.4 (40%) to 14 below...
   unsigned long int nominalFrameTime = ((34*Tbit)+90*Tbit);  // 90 = 10*max # payload bytes + checksum (9). 
-  timeout = LIN_TIMEOUT_IN_FRAMES * 14 * nominalFrameTime;  // 14 is the specced addtl 40% space above normal*10 -- the extra 10 is just pulled out of the 1000000 needed to convert to uSec (so that there are no decimal #s).  
+  timeout = LIN_TIMEOUT_IN_FRAMES * 14 * nominalFrameTime;  // 14 is the specced addtl 40% space above normal*10 -- the extra 10 is just pulled out of the 1000000 needed to convert to uSec (so that there are no decimal #s).
 }
 
 
@@ -80,9 +83,9 @@ void Lin::serialBreak(void)
 
   pinMode(txPin, OUTPUT);
   digitalWrite(txPin, LOW);  // Send BREAK
-  delayMicroseconds((1000000UL/((unsigned long int)serialSpd))*LIN_BREAK_DURATION);
+  _delay_us((1000000UL/((unsigned long int)serialSpd))*LIN_BREAK_DURATION);
   digitalWrite(txPin, HIGH);  // BREAK delimiter
-  delayMicroseconds(1000000UL/((unsigned long int)serialSpd));
+  _delay_us(1000000UL/((unsigned long int)serialSpd));
   serial.begin(serialSpd);
   serialOn = 1;
 }
@@ -92,7 +95,8 @@ uint8_t Lin::dataChecksum(const uint8_t* message, char nBytes,uint16_t sum)
 {
     while (nBytes-- > 0) sum += *(message++);
     // Add the carry
-    sum = (sum&255)+(sum>>8);  
+    while(sum>>8)  // In case adding the carry causes another carry
+      sum = (sum&255)+(sum>>8); 
     return (~sum);
 }
 
@@ -117,23 +121,48 @@ void Lin::send(uint8_t addr, const uint8_t* message, uint8_t nBytes,uint8_t prot
   serial.write(cksum);  // checksum  
 }
 
+
+
 uint8_t Lin::recv(uint8_t addr, uint8_t* message, uint8_t nBytes,uint8_t proto)
 {
+  uint8_t bytesRcvd=0;
   unsigned int timeoutCount=0;
   serialBreak();       // Generate the low signal that exceeds 1 char.
+  serial.flush();
   serial.write(0x55);  // Sync byte
   uint8_t idByte = (addr&0x3f) | addrParity(addr);
+  //p("ID byte %d", idByte);
   serial.write(idByte);  // ID byte
+  pinMode(txPin, INPUT);
+  digitalWrite(txPin, LOW);  // don't pull up
+  do { // I hear myself
+    while(!serial.available()) { _delay_us(100); timeoutCount+= 100; if (timeoutCount>=timeout) goto done; }
+  } while(serial.read() != 0x55);
+  do {
+    while(!serial.available()) { _delay_us(100); timeoutCount+= 100; if (timeoutCount>=timeout) goto done; }
+  } while(serial.read() != idByte);
+
+
   for (uint8_t i=0;i<nBytes;i++)
     {
       // This while loop strategy does not take into account the added time for the logic.  So the actual timeout will be slightly longer then written here.
-      while(!serial.available()) { delayMicroseconds(100); timeoutCount+= 100; if (timeoutCount>=timeout) return 0; } 
+      while(!serial.available()) { _delay_us(100); timeoutCount+= 100; if (timeoutCount>=timeout) goto done; } 
       message[i] = serial.read();
+      bytesRcvd++;
     }
-  while(!serial.available()) { delayMicroseconds(100); timeoutCount+= 100; if (timeoutCount>=timeout) return 0; } 
-  uint8_t cksum = serial.read();
-  if (proto==1) idByte = 0;  // Don't cksum the ID byte in LIN 1.x
-  if (dataChecksum(message,nBytes,idByte) == cksum) return 1;
-  return 0;
+  while(!serial.available()) { _delay_us(100); timeoutCount+= 100; if (timeoutCount>=timeout) goto done; }
+  if (serial.available())
+    {
+    uint8_t cksum = serial.read();
+    bytesRcvd++;
+    if (proto==1) idByte = 0;  // Don't cksum the ID byte in LIN 1.x
+    if (dataChecksum(message,nBytes,idByte) == cksum) bytesRcvd = 0xff;
+    //p("cksum byte %x, calculated %x %x\n",cksum,dataChecksum(message,nBytes,idByte),dataChecksum(message,nBytes,0));
+    }
+
+done:
+  pinMode(txPin, OUTPUT);
+
+  return bytesRcvd;
 }
 

@@ -110,10 +110,10 @@ public:
   unsigned long int timeout;   //  How long to wait for a slave to fully transmit when doing a "read".  You can modify this after calling "begin"
   void begin(int speed);
 
-  // Send a Lin 1.X message right now, ignoring the schedule table.
+  // Send a message right now, ignoring the schedule table.
   void send(uint8_t addr, const uint8_t* message,uint8_t nBytes,uint8_t proto=2);
 
-  // Receive a Lin 1.X message right now, returns 1 if good checksum, 0 if timeout or bad checksum.
+  // Receive a message right now, returns 0xff if good checksum, # bytes received (including checksum) if checksum is bad.
   uint8_t recv(uint8_t addr, uint8_t* message, uint8_t nBytes,uint8_t proto=2);
 
   // Scheduler APIs
