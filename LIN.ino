@@ -29,14 +29,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
    TODO: make a Arduino LIN slave so the code works without modification.
  */
 
-#include "lightuino5.h"
-#include "WProgram.h"
+#include "Arduino.h"
 #include "lin.h"
 
 Lin lin;
 
 #ifndef SIM
 #define simprt p
+#undef assert  // I don't want to assert in embedded code
 #define assert
 #else
 #define simprt printf
@@ -44,6 +44,7 @@ Lin lin;
 #include <assert.h>
 #endif
 
+#ifdef LIGHTUINO
 // Printf-style to the USB
 void p(char *fmt, ... )
 {
@@ -54,7 +55,11 @@ void p(char *fmt, ... )
         va_end (args);
         Usb.print(tmp);
 }
-
+#else  // We can't use the serial on a normal Arduino because it is being used by LIN
+void p(char *fmt, ... )
+{
+}
+#endif
 
 void setAllFadeTime(uint8_t fadeTime)
 {
@@ -89,7 +94,7 @@ void setAllToColor2(uint8_t red, uint8_t blue, uint8_t green, uint8_t brightness
 void setup(void)
 {
   lin.begin(19200);
-  Usb.begin();
+  //Usb.begin();
 }
 
 
@@ -245,8 +250,8 @@ void SchedulerTest(void)
   setAllFadeTime(0xe0);
   setAllToColor(255,0,0);
   setAllFadeTime(0xe0);
-  Usb.print("Simple LIN frame test\n");
+  //Usb.print("Simple LIN frame test\n");
   SimpleFrameInjection(); 
-  Usb.print("Scheduler test\n");
+  //Usb.print("Scheduler test\n");
   SchedulerTest();
 }

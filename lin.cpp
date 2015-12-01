@@ -22,7 +22,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "WProgram.h"
+#include "Arduino.h"
 #include "lin.h"
 #include <util/delay.h>
 
@@ -83,9 +83,16 @@ void Lin::serialBreak(void)
 
   pinMode(txPin, OUTPUT);
   digitalWrite(txPin, LOW);  // Send BREAK
-  _delay_us((1000000UL/((unsigned long int)serialSpd))*LIN_BREAK_DURATION);
+  unsigned long int brkend = (1000000UL/((unsigned long int)serialSpd));
+  unsigned long int brkbegin = brkend*LIN_BREAK_DURATION;
+  if (brkbegin > 16383) delay(brkbegin/1000);  // delayMicroseconds unreliable above 16383 see arduino man pages
+  else delayMicroseconds(brkbegin);
+  
   digitalWrite(txPin, HIGH);  // BREAK delimiter
-  _delay_us(1000000UL/((unsigned long int)serialSpd));
+ 
+  if (brkend > 16383) delay(brkend/1000);  // delayMicroseconds unreliable above 16383 see arduino man pages
+  else delayMicroseconds(brkend);
+
   serial.begin(serialSpd);
   serialOn = 1;
 }

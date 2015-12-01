@@ -26,7 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //typedef unsigned char uint8_t;
 //typedef unsigned int uint16_t;
 #include <inttypes.h>
-#include "WProgram.h"
+#include "Arduino.h"
 #include <HardwareSerial.h>
 
 #define LIN_SERIAL            HardwareSerial
