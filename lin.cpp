@@ -135,11 +135,12 @@ uint8_t Lin::recv(uint8_t addr, uint8_t* message, uint8_t nBytes,uint8_t proto)
   uint8_t bytesRcvd=0;
   unsigned int timeoutCount=0;
   serialBreak();       // Generate the low signal that exceeds 1 char.
-  serial.flush();
   serial.write(0x55);  // Sync byte
+  serial.flush();
   uint8_t idByte = (addr&0x3f) | addrParity(addr);
   //p("ID byte %d", idByte);
   serial.write(idByte);  // ID byte
+  serial.flush();
   pinMode(txPin, INPUT);
   digitalWrite(txPin, LOW);  // don't pull up
   do { // I hear myself
