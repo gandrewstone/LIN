@@ -120,7 +120,8 @@ uint8_t Lin::addrParity(uint8_t addr)
 void Lin::send(uint8_t addr, const uint8_t* message, uint8_t nBytes,uint8_t proto)
 {
   uint8_t addrbyte = (addr&0x3f) | addrParity(addr);
-  uint8_t cksum = dataChecksum(message,nBytes,(proto==1) ? 0:addrbyte);
+  // LIN diagnostic frame shall always use CHKSUM of protocol version 1.x.
+  uint8_t cksum = dataChecksum(message, nBytes, (proto == 1 || addr == 0x3C) ? 0 : addrbyte);
   serialBreak();       // Generate the low signal that exceeds 1 char.
   serial.write(0x55);  // Sync byte
   serial.write(addrbyte);  // ID byte
@@ -162,7 +163,8 @@ uint8_t Lin::recv(uint8_t addr, uint8_t* message, uint8_t nBytes,uint8_t proto)
     {
     uint8_t cksum = serial.read();
     bytesRcvd++;
-    if (proto==1) idByte = 0;  // Don't cksum the ID byte in LIN 1.x
+    // LIN diagnostic frame shall always use CHKSUM of LIN protocol version 1.x.
+    if (proto == 1 || addr == 0x3D) idByte = 0; // Don't cksum the ID byte in LIN 1.x
     if (dataChecksum(message,nBytes,idByte) == cksum) bytesRcvd = 0xff;
     //p("cksum byte %x, calculated %x %x\n",cksum,dataChecksum(message,nBytes,idByte),dataChecksum(message,nBytes,0));
     }
