@@ -22,6 +22,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifndef LIN_H_
+#define LIN_H_
 
 //typedef unsigned char uint8_t;
 //typedef unsigned int uint16_t;
@@ -124,3 +126,5 @@ public:
   void loop();
 
 };
+
+#endif // LIN_H_
