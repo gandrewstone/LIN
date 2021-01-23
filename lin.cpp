@@ -24,7 +24,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "Arduino.h"
 #include "lin.h"
-#include <util/delay.h>
 
  //void p(char *fmt, ... );
 
@@ -144,21 +143,21 @@ uint8_t Lin::recv(uint8_t addr, uint8_t* message, uint8_t nBytes,uint8_t proto)
   pinMode(txPin, INPUT);
   digitalWrite(txPin, LOW);  // don't pull up
   do { // I hear myself
-    while(!serial.available()) { _delay_us(100); timeoutCount+= 100; if (timeoutCount>=timeout) goto done; }
+    while(!serial.available()) { delayMicroseconds(100); timeoutCount+= 100; if (timeoutCount>=timeout) goto done; }
   } while(serial.read() != 0x55);
   do {
-    while(!serial.available()) { _delay_us(100); timeoutCount+= 100; if (timeoutCount>=timeout) goto done; }
+    while(!serial.available()) { delayMicroseconds(100); timeoutCount+= 100; if (timeoutCount>=timeout) goto done; }
   } while(serial.read() != idByte);
 
 
   for (uint8_t i=0;i<nBytes;i++)
     {
       // This while loop strategy does not take into account the added time for the logic.  So the actual timeout will be slightly longer then written here.
-      while(!serial.available()) { _delay_us(100); timeoutCount+= 100; if (timeoutCount>=timeout) goto done; } 
+      while(!serial.available()) { delayMicroseconds(100); timeoutCount+= 100; if (timeoutCount>=timeout) goto done; } 
       message[i] = serial.read();
       bytesRcvd++;
     }
-  while(!serial.available()) { _delay_us(100); timeoutCount+= 100; if (timeoutCount>=timeout) goto done; }
+  while(!serial.available()) { delayMicroseconds(100); timeoutCount+= 100; if (timeoutCount>=timeout) goto done; }
   if (serial.available())
     {
     uint8_t cksum = serial.read();
